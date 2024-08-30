@@ -208,10 +208,19 @@ pub fn session_login(
     }
 }
 
-pub fn session_send2fa(session_id: SessionID, code: String) {
+pub fn session_send2fa(session_id: SessionID, code: String, trust_this_device: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
-        session.send2fa(code);
+        session.send2fa(code, trust_this_device);
     }
+}
+
+pub fn session_get_enable_trusted_devices(session_id: SessionID) -> SyncReturn<bool> {
+    let v = if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        session.get_enable_trusted_devices()
+    } else {
+        false
+    };
+    SyncReturn(v)
 }
 
 pub fn session_close(session_id: SessionID) {
@@ -482,6 +491,25 @@ pub fn session_switch_display(is_desktop: bool, session_id: SessionID, value: Ve
 
 pub fn session_handle_flutter_key_event(
     session_id: SessionID,
+    character: String,
+    usb_hid: i32,
+    lock_modes: i32,
+    down_or_up: bool,
+) {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        let keyboard_mode = session.get_keyboard_mode();
+        session.handle_flutter_key_event(
+            &keyboard_mode,
+            &character,
+            usb_hid,
+            lock_modes,
+            down_or_up,
+        );
+    }
+}
+
+pub fn session_handle_flutter_raw_key_event(
+    session_id: SessionID,
     name: String,
     platform_code: i32,
     position_code: i32,
@@ -490,7 +518,7 @@ pub fn session_handle_flutter_key_event(
 ) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         let keyboard_mode = session.get_keyboard_mode();
-        session.handle_flutter_key_event(
+        session.handle_flutter_raw_key_event(
             &keyboard_mode,
             &name,
             platform_code,
@@ -698,6 +726,18 @@ pub fn session_add_job(
 pub fn session_resume_job(session_id: SessionID, act_id: i32, is_remote: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.resume_job(act_id, is_remote);
+    }
+}
+
+pub fn session_rename_file(
+    session_id: SessionID,
+    act_id: i32,
+    path: String,
+    new_name: String,
+    is_remote: bool,
+) {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        session.rename_file(act_id, path, new_name, is_remote);
     }
 }
 
@@ -1882,7 +1922,7 @@ pub fn main_is_login_wayland() -> SyncReturn<bool> {
     SyncReturn(is_login_wayland())
 }
 
-pub fn main_hide_docker() -> SyncReturn<bool> {
+pub fn main_hide_dock() -> SyncReturn<bool> {
     #[cfg(target_os = "macos")]
     crate::platform::macos::hide_dock();
     SyncReturn(true)
@@ -2238,6 +2278,18 @@ pub fn main_get_buildin_option(key: String) -> SyncReturn<String> {
 
 pub fn main_check_hwcodec() {
     check_hwcodec()
+}
+
+pub fn main_get_trusted_devices() -> String {
+    get_trusted_devices()
+}
+
+pub fn main_remove_trusted_devices(json: String) {
+    remove_trusted_devices(&json)
+}
+
+pub fn main_clear_trusted_devices() {
+    clear_trusted_devices()
 }
 
 pub fn session_request_new_display_init_msgs(session_id: SessionID, display: usize) {
